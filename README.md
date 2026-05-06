@@ -15,7 +15,7 @@ A locally hosted, statistically rigorous exploratory data analysis dashboard bui
 - **Regression** — `statsmodels` OLS with full inferential output; coefficient plot with 95% CIs; VIF table; four residual diagnostic plots
 - **Statistical Tests** — t-tests (independent / paired / one-sample) with Levene + Welch + non-parametric fallbacks; one-way / two-way / repeated-measures ANOVA with Tukey HSD; mediation (Pingouin) and multilevel 2-1-1 mediation with bootstrap CIs
 
-See [`DESIGN.md`](DESIGN.md) for architecture and constraints.
+See [`DESIGN.md`](DESIGN.md) for architecture, state management, and per-page design rationale.
 
 ## Run locally
 
