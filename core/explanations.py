@@ -4,6 +4,8 @@ Provides glossaries, assumption guides, and interpretation templates.
 Helps students understand statistical concepts and results.
 """
 
+import pandas as pd
+
 # ============================================================================
 # STATISTICAL GLOSSARY
 # ============================================================================
@@ -327,8 +329,13 @@ def interpret_normality_tests(norm_df, column_name, n_samples=None):
     Returns:
         str: Interpretation text
     """
-    # Count how many tests reject normality (p < 0.05)
-    non_normal_count = (norm_df.get("p-value", []) < 0.05).sum() if "p-value" in norm_df else 0
+    # Count how many tests reject normality (p < 0.05). The Anderson-Darling
+    # row stores a string in this column ("CV=... @ 5%"), so coerce first.
+    if "p-value" in norm_df:
+        p_numeric = pd.to_numeric(norm_df["p-value"], errors="coerce")
+        non_normal_count = int((p_numeric < 0.05).sum())
+    else:
+        non_normal_count = 0
     total_tests = len(norm_df)
     
     if non_normal_count == 0:
