@@ -245,7 +245,8 @@ def pvalue_matrix(df: pd.DataFrame, numeric_cols: list[str], method: str) -> pd.
                 p = 1.0
             pvals.iloc[i, j] = p
             pvals.iloc[j, i] = p
-    np.fill_diagonal(pvals.values, np.nan)
+    for c in cols:
+        pvals.loc[c, c] = np.nan
     return pvals
 
 
