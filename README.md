@@ -1,9 +1,9 @@
 # EDA Dashboard
 
 [![Tests](https://github.com/Smuts94/data-exploration-dashboard/actions/workflows/tests.yml/badge.svg)](https://github.com/Smuts94/data-exploration-dashboard/actions/workflows/tests.yml)
-[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://share.streamlit.io/deploy?repository=Smuts94/data-exploration-dashboard&branch=main&mainModule=app.py)
+[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://eda-dashboard-smuts.streamlit.app/)
 
-A locally hosted, statistically rigorous exploratory data analysis dashboard built for PhD research. Upload a dataset and immediately work through descriptive stats, correlation, regression, and formal hypothesis testing — with assumption checks and effect sizes throughout.
+A statistically rigorous exploratory data analysis dashboard for research workflows. Upload a dataset and work through descriptive stats, correlation, regression, and formal hypothesis testing — with assumption checks and effect sizes throughout.
 
 ## Features
 
@@ -15,37 +15,56 @@ A locally hosted, statistically rigorous exploratory data analysis dashboard bui
 - **Regression** — `statsmodels` OLS with full inferential output; coefficient plot with 95% CIs; VIF table; four residual diagnostic plots
 - **Statistical Tests** — t-tests (independent / paired / one-sample) with Levene + Welch + non-parametric fallbacks; one-way / two-way / repeated-measures ANOVA with Tukey HSD; mediation (Pingouin) and multilevel 2-1-1 mediation with bootstrap CIs
 
-See [`DESIGN.md`](DESIGN.md) for architecture, state management, and per-page design rationale.
+## Use it online
 
-## Run locally
+Open **<https://eda-dashboard-smuts.streamlit.app/>** in your browser. No install, no signup.
+
+> **Note on data privacy.** The hosted app runs on Streamlit Community Cloud (US-hosted shared infrastructure). Your uploaded data lives only in your own session and is discarded when you close the tab — nothing is persisted server-side and other visitors cannot see your data. That said, if your dataset contains sensitive or NDA-bound information, run it offline (see below) instead.
+
+The free hosted instance has limited resources (~1 GB RAM) and sleeps after periods of inactivity — first visit after a sleep takes ~10–30 s to wake. For large datasets or production work, run offline.
+
+## Use it offline
+
+Run the app on your own machine — fully local, no network calls, no telemetry. Recommended for sensitive data or large datasets.
+
+**Requirements:** Python 3.11 or newer.
 
 ```bash
+git clone https://github.com/Smuts94/data-exploration-dashboard.git
+cd data-exploration-dashboard
 pip install -r requirements.txt
 streamlit run app.py
 ```
 
-Open http://localhost:8501.
+The app opens at <http://localhost:8501>. Stop with `Ctrl+C` in the terminal.
 
-## Run tests
+A virtual environment is recommended:
+
+```bash
+python -m venv .venv
+# Windows
+.venv\Scripts\activate
+# macOS / Linux
+source .venv/bin/activate
+pip install -r requirements.txt
+streamlit run app.py
+```
+
+## Tech stack
+
+Streamlit · pandas · NumPy · SciPy · statsmodels · Pingouin · Plotly · Seaborn · matplotlib
+
+## Architecture
+
+`raw_df` is never mutated; all analysis runs on copies via a two-layer filter model (`filtered_df` → `analysis_df`). See [`DESIGN.md`](DESIGN.md) for state management, per-page design rationale, and implementation constraints.
+
+## Contributing
+
+Run the test suite:
 
 ```bash
 pip install pytest
 python -m pytest tests/
 ```
 
-## Deploy to Streamlit Community Cloud
-
-1. Go to https://share.streamlit.io and sign in with GitHub.
-2. Click **New app** → pick `Smuts94/data-exploration-dashboard`, branch `main`, main file `app.py`.
-3. In **Advanced settings** set Python version to **3.12** (3.13 also works).
-4. Click **Deploy**.
-
-The first build takes ~3–5 minutes (installs `scipy`, `statsmodels`, `pingouin`). Every push to `main` redeploys automatically.
-
-## Tech stack
-
-Streamlit · pandas · NumPy · SciPy · statsmodels · Pingouin · Plotly · Seaborn · matplotlib
-
-## Constraints
-
-Fully local by design — no external API calls, no telemetry, no authentication. `raw_df` is never mutated; all analysis runs on copies via a two-layer filter model (`filtered_df` → `analysis_df`).
+Tests run automatically on every push and pull request via GitHub Actions.
