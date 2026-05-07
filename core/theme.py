@@ -9,7 +9,6 @@ Public API
 inject_theme()                        Idempotent. Call once near the top of every page,
                                       after st.set_page_config(...) and init_state().
 page_header(eyebrow, title, lede)     Replaces bare st.title(...) on each page.
-feature_card(num, title, body)        Landing-page feature card.
 pill(label, muted=False)              Inline HTML chip — caller must allow HTML.
 PALETTE                               Categorical colour list for charts.
 """
@@ -83,14 +82,25 @@ def _register_plotly_template() -> None:
 _CSS = f"""
 <style>
 /* Typography ----------------------------------------------------------- */
-html, body, [class*="st-"], button, input, textarea, select {{
-    font-family: {FONT_SANS} !important;
+html, body, .stApp, button, input, textarea, select,
+.stMarkdown, [data-testid="stMarkdownContainer"],
+[data-testid="stHeading"], [data-testid="stText"] {{
+    font-family: {FONT_SANS};
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
 }}
-code, pre, kbd, samp,
-[data-testid="stMetricValue"],
-.mono {{ font-family: {FONT_MONO} !important; }}
+code, pre, kbd, samp, .mono,
+[data-testid="stMetricValue"] {{ font-family: {FONT_MONO}; }}
+
+/* Preserve Streamlit's icon fonts (Material Symbols / Icons) ---------- */
+[data-testid*="Icon"],
+[data-testid*="icon"],
+.material-icons,
+.material-symbols-outlined,
+.material-symbols-rounded,
+.material-symbols-sharp,
+i[class*="material"],
+[class*="MaterialIcon"] {{ font-family: revert !important; }}
 
 /* Headings ------------------------------------------------------------- */
 h1, h2, h3, h4 {{ letter-spacing: -0.02em; color: {INK}; font-weight: 600; }}
@@ -205,37 +215,24 @@ h3 {{ font-size: 1.125rem; line-height: 1.4; }}
     margin: .25rem 0 1.5rem 0;
 }}
 
-/* Feature card (landing page) ----------------------------------------- */
-.feature-card {{
-    border: 1px solid {BORDER};
-    border-radius: 12px;
-    padding: 1.25rem 1.25rem 1rem 1.25rem;
-    background: {SURFACE};
-    height: 100%;
-    transition: all 150ms ease;
-}}
-.feature-card:hover {{
-    border-color: {PRIMARY_BORDER};
-    box-shadow: 0 4px 12px rgba(15, 23, 42, .06);
-    transform: translateY(-1px);
-}}
-.feature-card .feature-num {{
+/* Feature card content (inside st.container(border=True)) ------------- */
+.feature-num {{
     color: {PRIMARY};
     font-size: .75rem;
     font-weight: 600;
     letter-spacing: .06em;
     text-transform: uppercase;
 }}
-.feature-card h4 {{
+.feature-title {{
     margin: .25rem 0 .375rem 0;
     font-size: 1.0625rem;
     font-weight: 600;
     color: {INK};
 }}
-.feature-card p {{
+.feature-body {{
     color: {INK_FADED};
     font-size: .875rem;
-    margin: 0;
+    margin: 0 0 .75rem 0;
     line-height: 1.5;
 }}
 
@@ -280,18 +277,6 @@ def page_header(eyebrow: str, title: str, lede: str | None = None) -> None:
     if lede:
         parts.append(f'<p class="lede">{html.escape(lede)}</p>')
     st.markdown("\n".join(parts), unsafe_allow_html=True)
-
-
-def feature_card(num: str, title: str, body: str) -> None:
-    """Render one landing-page feature card."""
-    st.markdown(
-        f'<div class="feature-card">'
-        f'<div class="feature-num">{html.escape(num)}</div>'
-        f'<h4>{html.escape(title)}</h4>'
-        f'<p>{html.escape(body)}</p>'
-        f'</div>',
-        unsafe_allow_html=True,
-    )
 
 
 def pill(label: str, muted: bool = False) -> str:
