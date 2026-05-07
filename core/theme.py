@@ -82,25 +82,16 @@ def _register_plotly_template() -> None:
 _CSS = f"""
 <style>
 /* Typography ----------------------------------------------------------- */
-html, body, .stApp, button, input, textarea, select,
-.stMarkdown, [data-testid="stMarkdownContainer"],
-[data-testid="stHeading"], [data-testid="stText"] {{
+/* Set the font on the root only, so it cascades by inheritance.
+   Streamlit's own icon spans (Material Symbols) have direct font-family
+   rules that will override inheritance — leave them alone. */
+html, body, .stApp {{
     font-family: {FONT_SANS};
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
 }}
 code, pre, kbd, samp, .mono,
 [data-testid="stMetricValue"] {{ font-family: {FONT_MONO}; }}
-
-/* Preserve Streamlit's icon fonts (Material Symbols / Icons) ---------- */
-[data-testid*="Icon"],
-[data-testid*="icon"],
-.material-icons,
-.material-symbols-outlined,
-.material-symbols-rounded,
-.material-symbols-sharp,
-i[class*="material"],
-[class*="MaterialIcon"] {{ font-family: revert !important; }}
 
 /* Headings ------------------------------------------------------------- */
 h1, h2, h3, h4 {{ letter-spacing: -0.02em; color: {INK}; font-weight: 600; }}
