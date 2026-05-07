@@ -9,11 +9,21 @@ from core.state import (
     get_raw_df, get_col_types, get_study_col, get_group_col,
     get_dataset_name, set_dataset_name,
 )
+from core.theme import inject_theme, page_header
 
 st.set_page_config(page_title="Data Upload", layout="wide")
 init_state()
+inject_theme()
 
-st.title("0 · Data Upload")
+page_header(
+    eyebrow="Step 0",
+    title="Data Upload",
+    lede=(
+        "Drop a CSV, TSV, or XLSX file. We'll preview shape, types, and "
+        "missingness, then let you mark the study and group columns that "
+        "drive every downstream analysis page."
+    ),
+)
 
 # ---------------------------------------------------------------------------
 # File upload
