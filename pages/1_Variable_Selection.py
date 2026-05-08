@@ -56,7 +56,7 @@ if col_b.button("Numeric only", use_container_width=True):
 top_n = col_c.number_input(
     "Keep top N numeric columns (by variance)",
     min_value=1, max_value=max(1, len(numeric_cols)),
-    value=min(10, len(numeric_cols)),
+    value=max(1, min(10, len(numeric_cols))),
     step=1,
     key="varsel_topn",
     help="Ranks numeric columns by their variance in the raw dataset and keeps the N highest.",
