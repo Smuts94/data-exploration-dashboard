@@ -15,6 +15,7 @@ from core.stats import (
 from core.plots import histogram_kde, qq_plot, categorical_bar
 from core.group_utils import universal_filter, local_group_selector, render_group_layout, download_csv
 from core.explanations import STAT_GLOSSARY, interpret_normality_tests
+from core.export_ui import render_export
 
 st.set_page_config(page_title="Descriptive Stats", layout="wide")
 init_state()
@@ -126,6 +127,8 @@ If your data is skewed or has high kurtosis, consider transformations or non-par
         render_group_layout(group_vals_d, subsets_d, _desc_table)
     else:
         _desc_table(analysis_df, "")
+
+    render_export("descriptive_stats", {"columns": numeric_cols}, key="exp_desc")
 
     # ── Distribution & Q-Q ───────────────────────────────────────────────────
     st.subheader("Distribution Plot")
@@ -260,6 +263,8 @@ Many statistical tests assume your data is **normally distributed** (bell-shaped
         
         download_csv(norm_df_all, "Download normality results", f"normality_{norm_col}.csv", key=f"dl_norm_{norm_col}_all")
 
+    render_export("normality", {"column": norm_col}, key="exp_norm")
+
     # ── Outlier Summary ──────────────────────────────────────────────────────
     st.subheader("Outlier Summary")
 
@@ -337,6 +342,8 @@ They can result from:
         render_group_layout(group_vals_orow, subsets_orow, _outlier_rows)
     else:
         _outlier_rows(analysis_df, "")
+
+    render_export("outliers", {"columns": numeric_cols}, key="exp_out")
 
 else:
     st.info("No numeric columns found. Check column type settings on the Upload page.")

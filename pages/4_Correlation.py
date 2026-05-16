@@ -13,6 +13,7 @@ from core.stats import correlation_matrix, pvalue_matrix
 from core.plots import correlation_heatmap, scatter_plot, pairplot_image
 from core.group_utils import universal_filter, local_group_selector, render_group_layout, download_csv
 from core.explanations import interpret_correlation_result
+from core.export_ui import render_export
 import scipy.stats as scipy_stats
 
 st.set_page_config(page_title="Correlation", layout="wide")
@@ -157,6 +158,8 @@ else:
     _corr_heatmap(analysis_df, "", numeric_cols, method)
 
 st.caption("Stars: * p<0.05 · ** p<0.01 · *** p<0.001. Diagonal excluded.")
+
+render_export("correlation", {"columns": numeric_cols, "method": method}, key="exp_corr")
 
 # ===========================================================================
 # Scatter Plot Explorer

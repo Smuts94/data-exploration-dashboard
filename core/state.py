@@ -24,6 +24,9 @@ KEY_SELECTED_STUDY = "selected_study"
 KEY_SELECTED_GROUPS = "selected_groups"
 KEY_SELECTED_VARS = "selected_vars"
 
+# Reproducible code export — ordered log of analyses run this session
+KEY_ANALYSIS_LOG = "analysis_log"
+
 
 # ---------------------------------------------------------------------------
 # Initialisation
@@ -43,6 +46,7 @@ def init_state() -> None:
         KEY_SELECTED_STUDY: None,
         KEY_SELECTED_GROUPS: [],
         KEY_SELECTED_VARS: [],
+        KEY_ANALYSIS_LOG: [],
     }
     for key, default in defaults.items():
         if key not in st.session_state:
@@ -146,6 +150,7 @@ def set_upload(raw_df: pd.DataFrame, col_types: dict[str, str]) -> None:
     st.session_state[KEY_SELECTED_STUDY] = None
     st.session_state[KEY_SELECTED_GROUPS] = []
     st.session_state[KEY_SELECTED_VARS] = []
+    st.session_state[KEY_ANALYSIS_LOG] = []
 
 
 def set_col_types(col_types: dict[str, str]) -> None:
@@ -192,6 +197,32 @@ def set_selected_groups(vals: list) -> None:
 
 def set_selected_vars(vals: list) -> None:
     st.session_state[KEY_SELECTED_VARS] = vals
+
+
+# ---------------------------------------------------------------------------
+# Analysis log — drives reproducible code export
+# ---------------------------------------------------------------------------
+
+def get_analysis_log() -> list[dict]:
+    """Ordered list of {'kind': str, 'params': dict} for analyses run this session."""
+    return st.session_state.get(KEY_ANALYSIS_LOG, [])
+
+
+def log_analysis(kind: str, params: dict) -> None:
+    """
+    Record that an analysis was run, for the whole-session code export.
+    Deduplicates exact (kind, params) repeats — Streamlit reruns the whole
+    script on every interaction — and caps the log at 50 entries.
+    """
+    log = list(st.session_state.get(KEY_ANALYSIS_LOG, []))
+    entry = {"kind": kind, "params": params}
+    log = [e for e in log if e != entry]
+    log.append(entry)
+    st.session_state[KEY_ANALYSIS_LOG] = log[-50:]
+
+
+def clear_analysis_log() -> None:
+    st.session_state[KEY_ANALYSIS_LOG] = []
 
 
 # ---------------------------------------------------------------------------

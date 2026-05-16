@@ -40,9 +40,12 @@ A locally hosted, interactive Streamlit app that lets a researcher upload a data
 │   ├── state.py                    # Streamlit session_state management
 │   ├── sidebar.py                  # Global study / group / variable filter component
 │   ├── group_utils.py              # Per-visual local group selector helper
-│   └── explanations.py             # Education content: glossary, assumptions, interpretations
+│   ├── explanations.py             # Education content: glossary, assumptions, interpretations
+│   ├── codegen.py                  # Reproducible R & Python script generation (pure)
+│   └── export_ui.py                # Streamlit glue for the code-export buttons
 └── tests/
-    └── test_stats.py               # Unit tests for statistical functions
+    ├── test_stats.py               # Unit tests for statistical functions
+    └── test_codegen.py             # Tests for reproducible code export
 ```
 
 ## State Management
@@ -62,6 +65,8 @@ st.session_state["group_col"]         # Column designated as Group identifier
 st.session_state["selected_study"]    # Single active study value
 st.session_state["selected_groups"]   # Selected group values (multiselect)
 st.session_state["selected_vars"]     # Numeric columns selected for analysis
+
+st.session_state["analysis_log"]      # Ordered log of analyses run — drives code export
 ```
 
 ### Two-layer filtering model
@@ -191,3 +196,14 @@ All educational content is rendered inside collapsible expanders (progressive di
 ## CSV Export
 
 Result downloads include a metadata header (test name, description, assumptions, interpretation) prepended to the CSV so an exported file is interpretable on its own.
+
+## Reproducible Code Export (R & Python)
+
+Every analysis result downloads as a standalone **R** and **Python** script that reproduces it on the student's own machine. The dashboard always computes in Python; R is an export-only artifact — **no R runtime is required to run the app**, and `requirements.txt` is unchanged.
+
+- `core/codegen.py` — a pure module (no Streamlit import, so it stays unit-testable). Given a `Provenance` (the data file plus the active filter / study / group selections) and a list of analysis specs, it emits standalone `.py` and `.R` script strings. Each script replays the filter chain so it reproduces the *analysed subset*, not the raw upload, and exposes a `DATA_FILE` constant the student points at their own file. Column names are emitted with explicit indexing so names containing spaces survive.
+- `core/export_ui.py` — Streamlit glue: `render_export()` renders the per-result download expander on Pages 3–6; `render_session_export()` (in the sidebar) emits one cumulative script for the whole session, driven by `session_state["analysis_log"]`.
+
+**Accuracy tiers.** Tier 1 analyses (descriptives, outliers, normality, correlation, t-tests, one-way & two-way ANOVA, OLS) reproduce the dashboard exactly. Tier 2 analyses (repeated-measures ANOVA, mediation, multilevel mediation) are canonical in R but diverge slightly — `lme4` / `lmerTest` vs statsmodels `mixedlm`, and bootstrap RNG differing across languages — so each Tier 2 R block carries a header `NOTE` and a fixed seed.
+
+Generated scripts stay standalone — they never import the app's `core` package; templates inline the scipy / statsmodels / R calls. `tests/test_codegen.py` executes every generated Python script against a fixture dataset to guard against template drift.

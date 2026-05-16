@@ -132,4 +132,12 @@ def render_sidebar(
         parts.append(f"**n =** {len(analysis_df):,}")
         st.caption(" · ".join(parts))
 
+        # ── Reproducible code export ─────────────────────────────────────────
+        from core.state import get_analysis_log
+        if get_analysis_log():
+            from core.export_ui import render_session_export
+            st.markdown("---")
+            st.caption("**Export full session** — one script for every analysis run")
+            render_session_export()
+
     return analysis_df, selected_groups

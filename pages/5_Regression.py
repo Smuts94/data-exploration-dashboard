@@ -13,6 +13,7 @@ from core.stats import compute_vif
 from core.plots import residual_diagnostic_plots, coefficient_plot
 from core.group_utils import universal_filter, local_group_selector, render_group_layout, download_csv
 from core.explanations import STAT_GLOSSARY, ASSUMPTIONS
+from core.export_ui import render_export
 
 import statsmodels.api as sm
 
@@ -315,3 +316,9 @@ if group_col_reg:
     render_group_layout(group_vals_reg, subsets_reg, _run_ols)
 else:
     _run_ols(analysis_df)
+
+render_export(
+    "ols_regression",
+    {"y": y_col, "x_cols": x_cols, "include_const": include_const},
+    key="exp_reg",
+)

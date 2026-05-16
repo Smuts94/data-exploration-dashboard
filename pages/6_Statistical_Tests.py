@@ -15,6 +15,7 @@ from core.state import init_state, require_upload, require_nonempty_filtered, ge
 from core.sidebar import render_sidebar
 from core.group_utils import download_csv
 from core.explanations import TEST_SELECTION_GUIDE
+from core.export_ui import render_export
 
 from core.stats import (
     run_independent_ttest,
@@ -179,6 +180,9 @@ if ttest_type == "Independent samples":
             st.markdown(f"**{g1}** (n={res['n'][1]})")
             st.dataframe(res["normality_b"], hide_index=True, use_container_width=True)
 
+        render_export("independent_ttest",
+                      {"value_col": ind_val, "group_col": ind_grp}, key="exp_tt_ind")
+
 # ---- Paired samples --------------------------------------------------------
 elif ttest_type == "Paired samples":
     if len(numeric_cols) < 2:
@@ -228,6 +232,9 @@ elif ttest_type == "Paired samples":
         with st.expander("Normality test on differences"):
             st.dataframe(res["normality"], hide_index=True, use_container_width=True)
 
+        render_export("paired_ttest",
+                      {"col1": paired_col1, "col2": paired_col2}, key="exp_tt_paired")
+
 # ---- One-sample ------------------------------------------------------------
 else:
     c1, c2 = st.columns(2)
@@ -261,6 +268,9 @@ else:
 
         with st.expander("Normality test"):
             st.dataframe(res["normality"], hide_index=True, use_container_width=True)
+
+        render_export("onesample_ttest",
+                      {"column": os_col, "mu0": mu0}, key="exp_tt_os")
 
 
 st.divider()
@@ -361,6 +371,9 @@ else:
                     with st.expander(f"Group: {grp_label}"):
                         st.dataframe(norm_df, hide_index=True, use_container_width=True)
 
+            render_export("oneway_anova",
+                          {"dv": ow_dv, "factor": ow_iv}, key="exp_ow")
+
     # ---- Two-way ANOVA -------------------------------------------------------
     elif anova_type == "Two-way":
         if len(cat_cols) < 2:
@@ -384,6 +397,10 @@ else:
 
                 st.subheader("Cell Means")
                 st.dataframe(res["group_stats"], hide_index=True, use_container_width=True)
+
+                render_export("twoway_anova",
+                              {"dv": tw_dv, "factor1": tw_f1, "factor2": tw_f2},
+                              key="exp_tw")
 
     # ---- Repeated-measures ANOVA ---------------------------------------------
     else:
@@ -445,6 +462,10 @@ else:
                 # Post-hoc
                 st.subheader("Post-hoc Pairwise Tests (FDR-corrected)")
                 st.dataframe(res["post_hoc"], hide_index=True, use_container_width=True)
+
+                render_export("rm_anova",
+                              {"dv": rm_dv, "within": rm_within, "subject": rm_subject},
+                              key="exp_rm")
 
 
 st.divider()
@@ -576,6 +597,13 @@ else:
         )
         st.plotly_chart(fig, use_container_width=True)
         st.caption("Significance stars: * p<0.05  ** p<0.01  *** p<0.001  |  c = total effect, c' = direct effect")
+
+        render_export(
+            "mediation",
+            {"x": med_x, "m": med_m, "y": med_y,
+             "covariates": covariates, "n_boot": n_boot, "seed": 42},
+            key="exp_med",
+        )
 
 # ─────────────────────────────────────────────────────────────────────────────
 # SECTION 7 — Multilevel Mediation (2-1-1)
@@ -822,4 +850,12 @@ if run_ml_med:
     st.caption(
         "Blue = predictor (X) · Orange = mediator(s) · Green = outcome (Y) · "
         "Solid arrows = a/b paths · Dotted arrow = direct effect c'"
+    )
+
+    render_export(
+        "multilevel_mediation",
+        {"outcome": ml_y, "x": ml_x, "mediators": ml_mediators,
+         "cluster": ml_cluster, "covariates": ml_covariates,
+         "n_boot": ml_n_boot, "seed": 42},
+        key="exp_mlmed",
     )
