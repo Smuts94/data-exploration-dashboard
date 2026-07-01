@@ -102,6 +102,15 @@ def _r_vec(vs) -> str:
     return "c(" + ", ".join(_r_lit(v) for v in vs) + ")"
 
 
+def has_provenance(prov: "Provenance") -> bool:
+    """True if any filter / study / group selection would narrow the data."""
+    return bool(
+        (prov.filters or {})
+        or (prov.study_col and prov.selected_study is not None)
+        or (prov.group_col and prov.selected_groups)
+    )
+
+
 def _L(text: str) -> list:
     """Dedent a triple-quoted block and return it as a list of lines."""
     return textwrap.dedent(text).strip("\n").splitlines()
@@ -787,8 +796,17 @@ def _block(spec: dict, lang: str) -> CodeBlock:
     return REGISTRY[kind][lang](spec.get("params", {}))
 
 
-def python_script(prov: Provenance, specs: list) -> str:
-    """Emit a standalone Python script reproducing the given analyses."""
+def python_script(prov: Provenance, specs: list, *,
+                  include_filters: bool = True) -> str:
+    """Emit a standalone Python script reproducing the given analyses.
+
+    ``include_filters`` controls the subset-reconstruction block:
+      * True  — the dashboard's filter/study/group selections are applied to
+        ``df`` so the script reproduces the exact analysed subset.
+      * False — those lines are emitted **commented out**, so the script is a
+        bare "load your file into ``df`` and run the analysis" stub. Uncomment
+        them to reproduce the exact dashboard subset.
+    """
     blocks = [(s, _block(s, "py")) for s in specs]
 
     imports = ["import datetime", "import warnings",
@@ -816,10 +834,20 @@ def python_script(prov: Provenance, specs: list) -> str:
         f"DATA_FILE = {_py_lit(prov.data_file)}  # <-- set this to your data file",
         "df = pd.read_csv(DATA_FILE)",
         "",
-        "# --- Reproduce the analysed subset (dashboard filters) ---",
     ]
     prov_lines = _py_provenance(prov)
-    out += prov_lines if prov_lines else ["# (no filters were active)"]
+    if not prov_lines:
+        out.append("# (no dashboard filters were active — df is the full dataset)")
+    elif include_filters:
+        out.append("# --- Reproduce the analysed subset (dashboard filters) ---")
+        out += prov_lines
+    else:
+        out += [
+            "# --- Optional: reproduce the dashboard's analysed subset ---",
+            "# By default this script runs on your full dataset. Uncomment the",
+            "# lines below to filter df down to the exact rows the dashboard used.",
+        ]
+        out += ["# " + ln for ln in prov_lines]
     out.append("")
 
     for spec, b in blocks:
@@ -839,8 +867,12 @@ def python_script(prov: Provenance, specs: list) -> str:
     return "\n".join(out) + "\n"
 
 
-def r_script(prov: Provenance, specs: list) -> str:
-    """Emit a standalone R script reproducing the given analyses."""
+def r_script(prov: Provenance, specs: list, *,
+             include_filters: bool = True) -> str:
+    """Emit a standalone R script reproducing the given analyses.
+
+    See ``python_script`` for the meaning of ``include_filters``.
+    """
     blocks = [(s, _block(s, "r")) for s in specs]
 
     pkgs = []
@@ -875,10 +907,20 @@ def r_script(prov: Provenance, specs: list) -> str:
         f"DATA_FILE <- {_r_lit(prov.data_file)}  # <-- set this to your data file",
         "df <- read.csv(DATA_FILE, check.names = FALSE, stringsAsFactors = FALSE)",
         "",
-        "# --- Reproduce the analysed subset (dashboard filters) ---",
     ]
     prov_lines = _r_provenance(prov)
-    out += prov_lines if prov_lines else ["# (no filters were active)"]
+    if not prov_lines:
+        out.append("# (no dashboard filters were active -- df is the full dataset)")
+    elif include_filters:
+        out.append("# --- Reproduce the analysed subset (dashboard filters) ---")
+        out += prov_lines
+    else:
+        out += [
+            "# --- Optional: reproduce the dashboard's analysed subset ---",
+            "# By default this script runs on your full dataset. Uncomment the",
+            "# lines below to filter df down to the exact rows the dashboard used.",
+        ]
+        out += ["# " + ln for ln in prov_lines]
     out.append("")
 
     for spec, b in blocks:

@@ -46,21 +46,32 @@ def render_export(kind: str, params: dict, *, key: str, log: bool = True) -> Non
             log_analysis(kind, params)
         except Exception:
             pass
-    try:
-        prov = build_provenance()
-        spec = {"kind": kind, "params": params}
-        py_code = codegen.python_script(prov, [spec])
-        r_code = codegen.r_script(prov, [spec])
-    except Exception as exc:  # never break the host page
-        st.caption(f"Code export unavailable: {exc}")
-        return
 
     with st.expander("⬇ Reproduce this in R / Python", expanded=False):
+        try:
+            prov = build_provenance()
+            spec = {"kind": kind, "params": params}
+            has_filters = codegen.has_provenance(prov)
+            bake = False
+            if has_filters:
+                bake = st.checkbox(
+                    "Bake in dashboard filters (reproduce the exact subset)",
+                    value=False, key=f"{key}_bake",
+                    help="Off: the script loads your full data file into `df` and "
+                         "runs the analysis (the filter lines are included but "
+                         "commented out). On: the filter/study/group selections "
+                         "are applied so the script reproduces the exact subset.",
+                )
+            py_code = codegen.python_script(prov, [spec], include_filters=bake)
+            r_code = codegen.r_script(prov, [spec], include_filters=bake)
+        except Exception as exc:  # never break the host page
+            st.caption(f"Code export unavailable: {exc}")
+            return
+
         st.caption(
-            "Standalone scripts that recreate this exact result on your own "
-            "machine. Open the script and set `DATA_FILE` at the top to your "
-            "data file, then run it. Filters and study/group selections are "
-            "baked in."
+            "Standalone scripts that load your original data file into `df` and "
+            "run this analysis. Open the script and set `DATA_FILE` at the top to "
+            "your data file, then run it."
         )
         c1, c2 = st.columns(2)
         c1.download_button(
@@ -82,8 +93,17 @@ def render_session_export(*, key: str = "session_export") -> None:
         return
     try:
         prov = build_provenance()
-        py_code = codegen.python_script(prov, log)
-        r_code = codegen.r_script(prov, log)
+        bake = False
+        if codegen.has_provenance(prov):
+            bake = st.checkbox(
+                "Bake in dashboard filters (reproduce the exact subset)",
+                value=False, key=f"{key}_bake",
+                help="Off: scripts load your full data file into `df`. On: the "
+                     "filter/study/group selections are applied to reproduce the "
+                     "exact analysed subset.",
+            )
+        py_code = codegen.python_script(prov, log, include_filters=bake)
+        r_code = codegen.r_script(prov, log, include_filters=bake)
     except Exception as exc:
         st.caption(f"Session export unavailable: {exc}")
         return

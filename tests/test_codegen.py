@@ -106,6 +106,21 @@ def test_filter_chain_emitted():
     assert "%in%" in r and ">= 10.0" in r
 
 
+def test_bare_stub_comments_out_filters():
+    """include_filters=False keeps the load-into-df line but comments the subset."""
+    prov = codegen.Provenance(
+        data_file="data.csv",
+        col_types={"age": "Numeric"}, filters={"age": (10.0, 50.0)},
+    )
+    spec = {"kind": "normality", "params": {"column": "score"}}
+    py = codegen.python_script(prov, [spec], include_filters=False)
+    assert "df = pd.read_csv(DATA_FILE)" in py       # still loads the real source
+    assert "# df = df[df['age'].between(10.0, 50.0)" in py  # subset commented out
+    assert "\ndf = df[df['age'].between" not in py         # never applied live
+    r = codegen.r_script(prov, [spec], include_filters=False)
+    assert "# df <- df[" in r and "\ndf <- df[df" not in r
+
+
 def test_session_script_covers_multiple_analyses():
     prov = codegen.Provenance(data_file="data.csv")
     specs = [{"kind": k, "params": PARAMS[k]}
