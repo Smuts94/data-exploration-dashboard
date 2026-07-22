@@ -394,9 +394,67 @@ else:
                 st.metric("n (complete cases)", res["n"])
                 st.subheader("ANOVA Table (Type II SS)")
                 st.dataframe(res["anova_table"], hide_index=True, use_container_width=True)
+                st.caption(
+                    "Partial η² = SS(effect) / (SS(effect) + SS(residual)). "
+                    "Guide: 0.01 small · 0.06 medium · 0.14 large."
+                )
 
                 st.subheader("Cell Means")
                 st.dataframe(res["group_stats"], hide_index=True, use_container_width=True)
+
+                # Post-hoc Tukey HSD — run per factor when its main effect is
+                # significant; a significant interaction makes marginal
+                # main-effect contrasts hard to interpret on their own, so
+                # offer a per-cell (factor1 × factor2) comparison as well.
+                sig_f1 = res["p_factor1"] < 0.05
+                sig_f2 = res["p_factor2"] < 0.05
+                sig_interaction = res["p_interaction"] < 0.05
+
+                if sig_f1 or sig_f2 or sig_interaction:
+                    st.subheader("Post-hoc: Tukey HSD")
+
+                    if sig_interaction:
+                        st.warning(
+                            f"The {tw_f1}×{tw_f2} interaction is significant "
+                            f"(p = {res['p_interaction']:.4f}) — marginal main-effect "
+                            "comparisons below can be misleading. See the per-cell "
+                            "comparison for a simple-effects view instead."
+                        )
+
+                    if sig_f1:
+                        st.markdown(f"**Main effect: {tw_f1}** (p = {res['p_factor1']:.4f})")
+                        try:
+                            tukey_f1 = run_tukey_hsd(analysis_df, tw_dv, tw_f1)
+                            st.dataframe(tukey_f1, hide_index=True, use_container_width=True)
+                            download_csv(tukey_f1, f"Download Tukey HSD — {tw_f1}",
+                                        f"tukey_{tw_f1}.csv", key="dl_tukey_f1")
+                        except Exception as e:
+                            st.error(f"Tukey HSD on {tw_f1} failed: {e}")
+
+                    if sig_f2:
+                        st.markdown(f"**Main effect: {tw_f2}** (p = {res['p_factor2']:.4f})")
+                        try:
+                            tukey_f2 = run_tukey_hsd(analysis_df, tw_dv, tw_f2)
+                            st.dataframe(tukey_f2, hide_index=True, use_container_width=True)
+                            download_csv(tukey_f2, f"Download Tukey HSD — {tw_f2}",
+                                        f"tukey_{tw_f2}.csv", key="dl_tukey_f2")
+                        except Exception as e:
+                            st.error(f"Tukey HSD on {tw_f2} failed: {e}")
+
+                    if sig_interaction:
+                        st.markdown(f"**Per-cell comparison: {tw_f1} × {tw_f2}**")
+                        try:
+                            cell_sub = analysis_df[[tw_dv, tw_f1, tw_f2]].dropna().copy()
+                            cell_col = f"{tw_f1} | {tw_f2}"
+                            cell_sub[cell_col] = (
+                                cell_sub[tw_f1].astype(str) + " | " + cell_sub[tw_f2].astype(str)
+                            )
+                            tukey_cell = run_tukey_hsd(cell_sub, tw_dv, cell_col)
+                            st.dataframe(tukey_cell, hide_index=True, use_container_width=True)
+                            download_csv(tukey_cell, "Download Tukey HSD — per-cell",
+                                        f"tukey_{tw_f1}_{tw_f2}_cells.csv", key="dl_tukey_cell")
+                        except Exception as e:
+                            st.error(f"Per-cell Tukey HSD failed: {e}")
 
                 render_export("twoway_anova",
                               {"dv": tw_dv, "factor1": tw_f1, "factor2": tw_f2},

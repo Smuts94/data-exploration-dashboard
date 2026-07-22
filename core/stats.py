@@ -602,7 +602,9 @@ def run_twoway_anova(
 ) -> dict:
     """
     Two-way ANOVA using statsmodels OLS + anova_lm (Type II SS).
-    Returns anova_table dict and group_stats.
+    Returns anova_table (with a partial eta-squared column), group_stats, and
+    the main-effect / interaction p-values so the caller can decide whether
+    to run post-hoc tests.
     """
     import statsmodels.formula.api as smf
     from statsmodels.stats.anova import anova_lm
@@ -617,13 +619,36 @@ def run_twoway_anova(
     lm = smf.ols(formula, data=sub).fit()
     table = anova_lm(lm, typ=2)
     table = table.reset_index().rename(columns={"index": "Source"})
+
+    # Partial eta-squared per effect: SS_effect / (SS_effect + SS_residual)
+    residual_ss = float(table.loc[table["Source"] == "Residual", "sum_sq"].iloc[0])
+    table["partial eta_sq"] = table.apply(
+        lambda r: round(r["sum_sq"] / (r["sum_sq"] + residual_ss), 4)
+        if r["Source"] != "Residual" and (r["sum_sq"] + residual_ss) > 0 else float("nan"),
+        axis=1,
+    )
+
+    p_values = {
+        "F1":       float(table.loc[table["Source"] == "C(F1)", "PR(>F)"].iloc[0]),
+        "F2":       float(table.loc[table["Source"] == "C(F2)", "PR(>F)"].iloc[0]),
+        "F1:F2":    float(table.loc[table["Source"] == "C(F1):C(F2)", "PR(>F)"].iloc[0]),
+    }
+
     # Restore readable source names
     table["Source"] = table["Source"].str.replace("C(F1)", factor1, regex=False)\
                                       .str.replace("C(F2)", factor2, regex=False)\
                                       .str.replace("C(F1):C(F2)", f"{factor1}:{factor2}", regex=False)
     group_stats = sub.groupby([f1, f2])[dv].agg(["count", "mean", "std"]).reset_index()
     group_stats.columns = [factor1, factor2, "n", "Mean", "SD"]
-    return {"anova_table": table, "group_stats": group_stats, "n": len(sub)}
+
+    return {
+        "anova_table": table,
+        "group_stats": group_stats,
+        "n": len(sub),
+        "p_factor1": p_values["F1"],
+        "p_factor2": p_values["F2"],
+        "p_interaction": p_values["F1:F2"],
+    }
 
 
 # ---------------------------------------------------------------------------
