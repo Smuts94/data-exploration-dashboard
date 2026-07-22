@@ -9,7 +9,7 @@ from core.state import (
     get_filtered_df, get_col_types, get_group_col, get_selected_vars,
 )
 from core.sidebar import render_sidebar
-from core.stats import correlation_matrix, pvalue_matrix
+from core.stats import correlation_matrix, pvalue_matrix, correct_pvalue_matrix
 from core.plots import correlation_heatmap, scatter_plot, pairplot_image
 from core.group_utils import universal_filter, local_group_selector, render_group_layout, download_csv
 from core.explanations import interpret_correlation_result
@@ -66,23 +66,29 @@ default_var, default_grp_col = universal_filter(
 # ---------------------------------------------------------------------------
 # Render helpers
 # ---------------------------------------------------------------------------
-def _corr_heatmap(df, label, cols, method):
+def _corr_heatmap(df, label, cols, method, correction):
     if len(df) < 3:
         st.warning(f"Too few rows ({len(df)}) for group **{label}**.")
         return
-    corr  = correlation_matrix(df, cols, method)
-    pvals = pvalue_matrix(df, cols, method)
+    corr      = correlation_matrix(df, cols, method)
+    pvals_raw = pvalue_matrix(df, cols, method)
+    pvals     = correct_pvalue_matrix(pvals_raw, correction)
     st.plotly_chart(correlation_heatmap(corr, pvals), use_container_width=True)
     st.caption(f"n = {len(df):,}" + (f" — **{label}**" if label else ""))
     with st.expander("Raw correlation values"):
-        corr_export = correlation_matrix(df, cols, method)
+        corr_export = corr
         st.dataframe(corr_export.style.background_gradient(cmap="RdBu_r", vmin=-1, vmax=1).format("{:.4f}"),
                      use_container_width=True)
         download_csv(corr_export.reset_index(), f"Download correlation matrix{' — ' + label if label else ''}", f"corr_matrix{'_' + label if label else ''}.csv", key=f"dl_corr{'_' + label if label else ''}")
     with st.expander("P-value matrix"):
-        pval_export = pvalue_matrix(df, cols, method)
-        st.dataframe(pval_export.style.format("{:.4f}"), use_container_width=True)
-        download_csv(pval_export.reset_index(), f"Download p-value matrix{' — ' + label if label else ''}", f"pval_matrix{'_' + label if label else ''}.csv", key=f"dl_pval{'_' + label if label else ''}")
+        if correction != "none":
+            st.caption(f"Corrected for multiple comparisons ({CORRECTION_LABELS[correction]}). "
+                       "Uncorrected p-values available in the download below.")
+            st.dataframe(pvals.style.format("{:.4f}"), use_container_width=True)
+            download_csv(pvals.reset_index(), f"Download corrected p-value matrix{' — ' + label if label else ''}", f"pval_matrix_corrected{'_' + label if label else ''}.csv", key=f"dl_pval_corr{'_' + label if label else ''}")
+        else:
+            st.dataframe(pvals_raw.style.format("{:.4f}"), use_container_width=True)
+        download_csv(pvals_raw.reset_index(), f"Download raw (uncorrected) p-value matrix{' — ' + label if label else ''}", f"pval_matrix_raw{'_' + label if label else ''}.csv", key=f"dl_pval_raw{'_' + label if label else ''}")
 
 
 def _scatter(df, label, x_col, y_col, color_arg, size_arg):
@@ -143,8 +149,30 @@ with st.expander("📚 Choosing a Correlation Method", expanded=False):
 **Important:** Correlation ≠ Causation! Just because X and Y are correlated doesn't mean X causes Y.
     """)
 
-method = st.radio("Correlation method", ["Pearson", "Spearman", "Kendall"],
-                   horizontal=True, key="corr_method")
+CORRECTION_LABELS = {
+    "fdr_bh": "Benjamini-Hochberg FDR",
+    "bonferroni": "Bonferroni",
+    "none": "None",
+}
+CORRECTION_OPTIONS = {v: k for k, v in CORRECTION_LABELS.items()}
+
+c_method, c_corr = st.columns([2, 1])
+method = c_method.radio("Correlation method", ["Pearson", "Spearman", "Kendall"],
+                        horizontal=True, key="corr_method")
+correction_label = c_corr.selectbox(
+    "Multiple-comparisons correction",
+    list(CORRECTION_OPTIONS.keys()),
+    index=0,
+    key="corr_correction",
+    help=(
+        "Testing every pair in the matrix runs many hypothesis tests at once — "
+        "without correction, significance stars will include false positives at "
+        "roughly the nominal rate per comparison, compounding as more variables "
+        "are included. Benjamini-Hochberg FDR is the default; Bonferroni is more "
+        "conservative; None reproduces uncorrected pairwise p-values."
+    ),
+)
+correction = CORRECTION_OPTIONS[correction_label]
 
 group_col_corr, group_vals_corr, subsets_corr = local_group_selector(
     analysis_df, col_types, key="corr_hm_grp", default_col=default_grp_col
@@ -152,12 +180,15 @@ group_col_corr, group_vals_corr, subsets_corr = local_group_selector(
 if group_col_corr:
     render_group_layout(
         group_vals_corr, subsets_corr, _corr_heatmap,
-        cols=numeric_cols, method=method,
+        cols=numeric_cols, method=method, correction=correction,
     )
 else:
-    _corr_heatmap(analysis_df, "", numeric_cols, method)
+    _corr_heatmap(analysis_df, "", numeric_cols, method, correction)
 
-st.caption("Stars: * p<0.05 · ** p<0.01 · *** p<0.001. Diagonal excluded.")
+st.caption(
+    "Stars: * p<0.05 · ** p<0.01 · *** p<0.001. Diagonal excluded. "
+    f"Correction: **{correction_label}**."
+)
 
 render_export("correlation", {"columns": numeric_cols, "method": method}, key="exp_corr")
 

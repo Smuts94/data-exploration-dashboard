@@ -251,6 +251,43 @@ def pvalue_matrix(df: pd.DataFrame, numeric_cols: list[str], method: str) -> pd.
     return pvals
 
 
+def correct_pvalue_matrix(pvals: pd.DataFrame, method: str = "fdr_bh") -> pd.DataFrame:
+    """
+    Apply a multiple-comparisons correction across the off-diagonal pairs of a
+    symmetric pairwise p-value matrix (e.g. from pvalue_matrix), then mirror
+    the corrected values back across the diagonal.
+
+    Testing every pair in an N-variable correlation matrix means many
+    hypotheses are being tested at once (N choose 2 of them); without
+    correction the significance stars will show false positives at roughly
+    the nominal rate per comparison, which compounds fast as N grows.
+
+    method: "none" (no correction), "bonferroni", or "fdr_bh"
+    (Benjamini-Hochberg — the default; less conservative than Bonferroni
+    while still controlling the false discovery rate).
+    """
+    if method == "none":
+        return pvals
+    from statsmodels.stats.multitest import multipletests
+
+    cols = list(pvals.columns)
+    idx_pairs = [(i, j) for i in range(len(cols)) for j in range(i + 1, len(cols))]
+    if not idx_pairs:
+        return pvals
+    raw = [pvals.iloc[i, j] for i, j in idx_pairs]
+    raw = [1.0 if (isinstance(p, float) and np.isnan(p)) else p for p in raw]
+
+    _, corrected, _, _ = multipletests(raw, method=method)
+
+    out = pvals.copy()
+    for (i, j), p_adj in zip(idx_pairs, corrected):
+        out.iloc[i, j] = p_adj
+        out.iloc[j, i] = p_adj
+    for c in cols:
+        out.loc[c, c] = np.nan
+    return out
+
+
 def significance_stars(p: float) -> str:
     if np.isnan(p):
         return ""
