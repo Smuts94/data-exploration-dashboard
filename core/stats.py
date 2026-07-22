@@ -356,14 +356,19 @@ def run_independent_ttest(
     equal_var = lev_p >= 0.05
 
     t, p = scipy_stats.ttest_ind(a, b, equal_var=equal_var)
-    df_val = (len(a) + len(b) - 2) if equal_var else None  # Welch df is fractional
     d = cohens_d_two_sample(a, b)
 
-    # 95% CI on mean difference using scipy
+    # 95% CI on mean difference — SE must match the SE implied by the
+    # t-statistic scipy just computed, or the CI and the t/p-value tell
+    # different stories.
     mean_diff = a.mean() - b.mean()
     if equal_var:
-        se = np.sqrt(a.var(ddof=1) / len(a) + b.var(ddof=1) / len(b))
-        df_ci = len(a) + len(b) - 2
+        # Student's t uses the pooled-variance SE, not the unpooled
+        # (Welch) SE — using the wrong one desyncs the CI from t/p.
+        n1, n2 = len(a), len(b)
+        pooled_var = ((n1 - 1) * a.var(ddof=1) + (n2 - 1) * b.var(ddof=1)) / (n1 + n2 - 2)
+        se = np.sqrt(pooled_var * (1 / n1 + 1 / n2))
+        df_ci = n1 + n2 - 2
     else:
         se = np.sqrt(a.var(ddof=1) / len(a) + b.var(ddof=1) / len(b))
         # Welch–Satterthwaite df
