@@ -44,10 +44,12 @@ STAT_GLOSSARY = {
         "- |Skewness| > 1 often suggests non-normal distribution."
     ),
     "kurtosis": (
-        "**Kurtosis** measures the 'thickness' of the tails.\n"
-        "- Kurtosis ≈ 3: normal distribution (excess = 0)\n"
-        "- Kurtosis > 3: heavy tails (leptokurtic)\n"
-        "- Kurtosis < 3: light tails (platykurtic)\n"
+        "**Kurtosis** measures the 'thickness' of the tails. This dashboard reports "
+        "**excess kurtosis** (pandas' `.kurt()`), which is centred on a normal "
+        "distribution rather than on 3.\n"
+        "- Excess kurtosis ≈ 0: normal distribution\n"
+        "- Excess kurtosis > 0: heavy tails (leptokurtic)\n"
+        "- Excess kurtosis < 0: light tails (platykurtic)\n"
         "Excess kurtosis > 1 suggests potential outliers."
     ),
     

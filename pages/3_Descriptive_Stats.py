@@ -101,10 +101,11 @@ if numeric_cols:
   - Skewness < -1: left-skewed (tail to left)
   - |Skewness| > 1 suggests **non-normal distribution**
 
-- **Kurtosis:** Measures tail heaviness.
-  - Kurtosis ≈ 3: normal distribution
-  - Kurtosis > 3: heavy tails (watch for outliers)
-  - Excess kurtosis (kurtosis - 3) > 1 suggests potential outliers
+- **Kurtosis:** Measures tail heaviness. This table reports **excess kurtosis**
+  (0 = normal, not the raw/Pearson convention where 3 = normal).
+  - Excess kurtosis ≈ 0: normal distribution
+  - Excess kurtosis > 0: heavy tails (watch for outliers)
+  - Excess kurtosis > 1 suggests potential outliers
 
 **Key Takeaway:** 
 If your data is skewed or has high kurtosis, consider transformations or non-parametric tests.
