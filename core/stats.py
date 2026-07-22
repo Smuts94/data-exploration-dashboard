@@ -16,6 +16,7 @@ from scipy.stats import (
 )
 from statsmodels.stats.stattools import durbin_watson
 from statsmodels.stats.outliers_influence import variance_inflation_factor
+from statsmodels.tools.tools import add_constant
 
 
 # ---------------------------------------------------------------------------
@@ -286,14 +287,22 @@ def annotated_corr_matrix(
 def compute_vif(X_df: pd.DataFrame) -> pd.DataFrame:
     """
     Compute Variance Inflation Factor for each predictor column.
-    X_df should be the design matrix WITHOUT the constant column.
+    X_df should be the predictor matrix WITHOUT the constant column — a
+    constant is added internally before running the auxiliary regressions.
+    statsmodels' variance_inflation_factor assumes the design matrix already
+    includes an intercept; omitting it biases every VIF (the aux. regressions
+    become no-intercept models), so the constant must be added here rather
+    than left to the caller.
     """
     cols = list(X_df.columns)
+    X_const = add_constant(X_df.astype(float), has_constant="add")
+    const_cols = list(X_const.columns)
+    arr = X_const.values
     vif_data = []
-    arr = X_df.values.astype(float)
-    for i, col in enumerate(cols):
+    for col in cols:
+        idx = const_cols.index(col)
         try:
-            vif = variance_inflation_factor(arr, i)
+            vif = variance_inflation_factor(arr, idx)
         except Exception:
             vif = float("nan")
         vif_data.append({"Predictor": col, "VIF": round(vif, 4)})
